@@ -10,3 +10,5 @@ def load_batch(filename):
     nn = X.shape[1]    
 
 load_batch('data_batch_1')
+
+#gfj
