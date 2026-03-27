@@ -7,8 +7,20 @@ def load_batch(filename):
         dict = pickle.load(fo, encoding='bytes')
     X = (dict[b'data'].astype(np.float64) / 255.0).T
     y = dict[b'labels']
-    nn = X.shape[1]    
+    nn = X.shape[1] 
+    Y = np.zeros((10,nn))
 
-load_batch('data_batch_1')
+    Y[y, np.arange(nn)] = 1
 
-#gfj
+    return X, Y, y
+
+def compute_stats(X):
+    mean_X = np.mean(X, axis=1, keepdims=True)
+    std_X  = np.std(X, axis=1, keepdims=True)
+    return mean_X, std_X
+
+def normalize(X, mean_X, std_X):
+    return (X - mean_X) / std_X
+
+X, Y, y = load_batch('data_batch_1')
+pre_process(X)

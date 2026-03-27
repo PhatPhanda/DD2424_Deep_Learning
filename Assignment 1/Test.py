@@ -5,7 +5,7 @@ import os
 
 
 
-# Load a batch of training data
+"""# Load a batch of training data
 cifar_dir = 'Assignment 1/Datasets/cifar-10-batches-py/'
 print(os.path.exists(cifar_dir))
 with open(cifar_dir + 'data_batch_1', 'rb') as fo:
@@ -26,3 +26,9 @@ for i in range(ni):
     axs[i].axis('off')
 plt.pause(2)
 
+"""
+
+x = np.zeros((3,3))
+x[(1,2)] = 1
+
+print(x)
