@@ -57,6 +57,15 @@ def compute_accuracy(P, y):
 
     return accuracy
 
+def backward_pass(X, Y, P, network, lam):
+    G = -(Y - P)
+    n = X.shape[1]
+    grad = {}
+
+    grad['W'] = np.dot(G, X.T) / n + 2*lam*network['W']
+    grad['b'] = np.sum(G, axis=1, keepdims=True) / n
+    return grad
+
     
 
 
@@ -72,10 +81,12 @@ def main():
 
     d = X_train.shape[0]
     K = Y_train.shape[0]
-
+    lam = 0.2
     init_net = init_parameters(K, d)
+
     P = apply_network(X_train[:, 0:100], init_net)
-    print(compute_accuracy(P, y_train[0:100]))
+    print(backward_pass(X_train[:, 0:100], Y_train[:, 0:100],P, init_net, lam))
+    
 
 
 
