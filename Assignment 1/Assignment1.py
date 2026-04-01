@@ -1,5 +1,6 @@
 import pickle 
 import numpy as np
+from torch_gradient_computations import ComputeGradsWithTorch
 
 def load_batch(filename):
     cifar_dir = 'Assignment 1/Datasets/cifar-10-batches-py/'
@@ -67,7 +68,22 @@ def backward_pass(X, Y, P, network, lam):
     return grad
 
     
+def compare_grads(my_grads, torch_grads):
+    for key in ['W', 'b']:
+        g1 = my_grads[key]
+        g2 = torch_grads[key]
 
+        print(f"\nComparing {key}:")
+        print("shape my_grads   :", g1.shape)
+        print("shape torch_grads:", g2.shape)
+
+        abs_diff = np.abs(g1 - g2)
+        max_abs_diff = np.max(abs_diff)
+
+        rel_error = np.max(abs_diff / np.maximum(1e-10, np.abs(g1) + np.abs(g2)))
+
+        print("max absolute difference:", max_abs_diff)
+        print("max relative error     :", rel_error)
 
 def main():
     X_train, Y_train, y_train = load_batch('data_batch_1')
@@ -81,11 +97,21 @@ def main():
 
     d = X_train.shape[0]
     K = Y_train.shape[0]
-    lam = 0.2
-    init_net = init_parameters(K, d)
+    
+    d_small = 10
+    n_small = 3
+    lam = 0
+    small_net = init_parameters(10,d_small)
+    X_small = X_train[0:d_small, 0:n_small]
+    Y_small = Y_train[:, 0:n_small]
+    P = apply_network(X_small, small_net)
+    my_grads = backward_pass(X_small, Y_small, P, small_net, lam)
+    torch_grads = ComputeGradsWithTorch(X_small, y_train[0:n_small], small_net)
 
-    P = apply_network(X_train[:, 0:100], init_net)
-    print(backward_pass(X_train[:, 0:100], Y_train[:, 0:100],P, init_net, lam))
+    
+    compare_grads(my_grads, torch_grads)
+
+
     
 
 

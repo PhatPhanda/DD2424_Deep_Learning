@@ -1,5 +1,5 @@
 import torch
-
+import numpy as np
 def ComputeGradsWithTorch(X, y, network_params):
 
     # torch requires arrays to be torch tensors
