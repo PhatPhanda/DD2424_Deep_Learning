@@ -501,15 +501,13 @@ def main_bce():
 
     fig, axs = plt.subplots(1, 2, figsize = (12,5))
 
-    # Softmax
     axs[0].hist(correct_s, bins=20, alpha=0.7, label='Correct')
     axs[0].hist(incorrect_s, bins=20, alpha=0.7, label='Incorrect')
     axs[0].set_title('Softmax + CE')
     axs[0].set_xlabel('Highest ouput probability')
     axs[0].set_ylabel('Count')
     axs[0].legend()
-
-    # Sigmoid
+    
     axs[1].hist(correct_b, bins=20, alpha=0.7, label='Correct')
     axs[1].hist(incorrect_b, bins=20, alpha=0.7, label='Incorrect')
     axs[1].set_title('Sigmoid + BCE')
