@@ -279,12 +279,10 @@ def load_all_training_data():
 
     X5, Y5, y5 = load_batch('data_batch_5')
 
-    # training = first 9000
     X_train_list.append(X5[:, :9000])
     Y_train_list.append(Y5[:, :9000])
     y_train_list.append(y5[:9000])
 
-    # validation = last 1000
     X_val = X5[:, 9000:]
     Y_val = Y5[:, 9000:]
     y_val = y5[9000:]
@@ -403,7 +401,6 @@ def main():
 
     fig, axs = plt.subplots(1, 2)
 
-    # --- Cost plot ---
     axs[0].plot(epochs, train_costs, label='Training cost')
     axs[0].plot(epochs, val_costs, label='Validation cost')
     axs[0].set_xlabel('Epoch')
@@ -411,7 +408,6 @@ def main():
     axs[0].set_title('Cost')
     axs[0].legend()
 
-    # --- Loss plot ---
     axs[1].plot(epochs, train_losses, label='Training loss')
     axs[1].plot(epochs, val_losses, label='Validation loss')
     axs[1].set_xlabel('Epoch')
