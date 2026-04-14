@@ -1,6 +1,6 @@
 import torch
 import numpy as np
-def ComputeGradsWithTorch(X, y, network_params):
+def ComputeGradsWithTorch(X, y, network_params, lam):
 
     # torch requires arrays to be torch tensors
     Xt = torch.from_numpy(X)
@@ -23,8 +23,11 @@ def ComputeGradsWithTorch(X, y, network_params):
     loss = torch.mean(-torch.log(P[y, np.arange(N)]))    
 
     # compute the backward pass relative to the loss and the named parameters 
-    loss.backward()
+    #loss.backward()
 
+    # compute cost and backwards pass relative cost
+    cost = loss + lam * torch.sum(torch.multiply(W, W))
+    cost.backward()
     # extract the computed gradients and make them numpy arrays 
     grads = {}
     grads['W'] = W.grad.numpy()
