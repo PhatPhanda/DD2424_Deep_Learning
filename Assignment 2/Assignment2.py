@@ -51,8 +51,13 @@ def init_parameters(L, d, m, K):
     
 
 def apply_network(X, network):
-    z = np.dot(network['W'], X)
-    s = z + network['b']
+    s1 = np.dot(network['W'][0], X) + network['b'][0]
+
+    h = np.maximum(0, s1)
+
+    s = np.dot(network['W'][1], h) + network['b'][1]
+
+
 
     P = np.exp(s) / np.sum(np.exp(s), axis=0, keepdims=True)
 
