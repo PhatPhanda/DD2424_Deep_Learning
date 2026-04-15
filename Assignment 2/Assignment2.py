@@ -2,7 +2,7 @@ import pickle
 import numpy as np
 import copy
 import matplotlib.pyplot as plt
-
+import torch
 
 def load_batch(filename):
     cifar_dir = 'Assignment 1/Datasets/cifar-10-batches-py/'
@@ -51,17 +51,24 @@ def init_parameters(L, d, m, K):
     
 
 def apply_network(X, network):
+
+    fp_data = {}
     s1 = np.dot(network['W'][0], X) + network['b'][0]
 
+    # RELU
     h = np.maximum(0, s1)
-
     s = np.dot(network['W'][1], h) + network['b'][1]
 
-
-
+    # SoftMAX
     P = np.exp(s) / np.sum(np.exp(s), axis=0, keepdims=True)
 
-    return P
+    fp_data['X'] = X
+    fp_data['s1'] = s1
+    fp_data['h'] = h
+    fp_data['s'] = s
+    fp_data['P'] = P
+
+    return fp_data
 
 def compute_loss(P, y):
     n = P.shape[1]
@@ -86,7 +93,7 @@ def backward_pass(X, Y, P, network, lam):
 
 def compute_cost(P, y, network, lam):
     loss = compute_loss(P, y)
-    reg = lam * np.sum(network['W'] ** 2)
+    reg = lam * (torch.sum(torch.multiply(network['W'][0], network['W'][0])) + torch.sum(torch.multiply(network['W'][1], network['W'][1])))
     cost = loss + reg
     return cost
 
