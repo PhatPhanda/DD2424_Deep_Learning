@@ -223,13 +223,13 @@ def load_all_training_data():
 
     X5, Y5, y5 = load_batch('data_batch_5')
 
-    X_train_list.append(X5[:, :5000])
-    Y_train_list.append(Y5[:, :5000])
-    y_train_list.append(y5[:5000])
+    X_train_list.append(X5[:, :1000])
+    Y_train_list.append(Y5[:, :1000])
+    y_train_list.append(y5[:1000])
 
-    X_val = X5[:, 5000:]
-    Y_val = Y5[:, 5000:]
-    y_val = y5[5000:]
+    X_val = X5[:, 1000:]
+    Y_val = Y5[:, 1000:]
+    y_val = y5[1000:]
 
     X_train = np.concatenate(X_train_list, axis=1)
     Y_train = np.concatenate(Y_train_list, axis=1)
@@ -345,20 +345,21 @@ def main():
 
     GD_params = {
     'n_batch': 100,
-    'n_epochs': 16,
+    'n_epochs': 24,
     'eta_min' : 1e-5,
     'eta_max' : 1e-1,
-    'n_s' : 2 * np.floor(n / 100)
+    'n_s' : 4 * np.floor(n / 100)
     }
-    #lam = 0.01
+    lam = 7.25856e-4
+    print(lam)
+    l_min = -3.5
+    l_max = -2.5
 
-    l_min = -5
-    l_max = -3
 
-    n_samples = 10
-
-    lams = 10**np.linspace(l_min, l_max, n_samples)
-
+    # Search----------------------------------------------------------------------------------------------------------------------------------------------------
+    """n_samples = 20
+    l = l_min + (l_max - l_min) * rng.random(1)
+    lams = 10**l
     print(lams)
 
     results = []
@@ -373,14 +374,17 @@ def main():
     results = sorted(results, key=lambda x: x['accuracy'], reverse=True)
 
     for r in results[:5]:
-        print(f"lambda = {r['lambda']:.5e}, val acc = {r['accuracy']:.4f}")
+        print(f"lambda = {r['lambda']:.5e}, val acc = {r['accuracy']:.4f}")"""
 
+    #------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+    trained_net, train_costs, val_costs, train_losses, val_losses, val_accs, etas, step_vec = mini_batch_GD(X_train, Y_train, y_train, X_val, y_val, GD_params, init_net, lam, rng)
     fp_data_test = apply_network(X_test, trained_net) 
     score = compute_accuracy(fp_data_test['P'], y_test)
     
 
-
-"""    print(score)
+    print(score)
     epochs = np.arange(1, GD_params['n_epochs']+1)
 
 
@@ -415,7 +419,7 @@ def main():
     plt.savefig('eta_plot.png')   
 
     plt.show()
-"""
+
 
 
 
