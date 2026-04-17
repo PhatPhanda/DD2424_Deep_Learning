@@ -239,7 +239,7 @@ def load_all_training_data():
 
         
 
-def test_gradients():
+def main_test_gradients():
     X_train, Y_train, y_train = load_batch('data_batch_1')
     X_val, Y_val, y_val = load_batch('data_batch_2') 
     X_test, Y_test, y_test = load_batch('test_batch')
@@ -267,7 +267,7 @@ def test_gradients():
     compare_grads(my_grads, torch_grads)
 
 
-def small_check():
+def main_small_check():
     X_train, Y_train, y_train = load_batch('data_batch_1')
     X_val, Y_val, y_val = load_batch('data_batch_2') 
     X_test, Y_test, y_test = load_batch('test_batch')
@@ -393,7 +393,7 @@ def main():
     # --- Cost plot ---
     axs[0].plot(step_vec, train_costs, label='Training cost')
     axs[0].plot(step_vec, val_costs, label='Validation cost')
-    axs[0].set_xlabel('Epoch')
+    axs[0].set_xlabel('Update Step')
     axs[0].set_ylabel('Cost')
     axs[0].set_title('Training vs Validation Cost')
     axs[0].legend()
@@ -401,7 +401,7 @@ def main():
     # --- Loss plot ---
     axs[1].plot(step_vec, train_losses, label='Training loss')
     axs[1].plot(step_vec, val_losses, label='Validation loss')
-    axs[1].set_xlabel('Epoch')
+    axs[1].set_xlabel('Update Step')
     axs[1].set_ylabel('Loss')
     axs[1].set_title('Training vs Validation Loss')
     axs[1].legend()
