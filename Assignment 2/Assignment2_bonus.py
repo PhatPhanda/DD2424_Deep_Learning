@@ -391,7 +391,7 @@ def train_and_evaluate(m, lam, dropout_rate = 0):
 
     best_val_acc = max(val_accs)
 
-    return best_val_acc, test_acc
+    return best_val_acc, test_acc, train_losses, val_losses, train_costs, val_costs
 
 def vector_to_image(x):
     return x.reshape(3, 32, 32)
@@ -497,7 +497,7 @@ def main():
 
     for m in m_values:
         #print(f"Testing m = {m}")
-        best_val_acc, test_acc = train_and_evaluate(m, lam, dropout_rate)
+        best_val_acc, test_acc, train_losses, val_losses, train_costs, val_costs= train_and_evaluate(m, lam, dropout_rate)
 
         results.append({
             'm': m,
@@ -511,20 +511,22 @@ def main():
     for r in results:
         print(r)
 
+    epochs = np.arange(1, len(train_losses)+1)
+
 
     fig, axs = plt.subplots(1, 2, figsize=(12, 5))
 
-    """# --- Cost plot ---
-    axs[0].plot(step_vec, train_costs, label='Training cost')
-    axs[0].plot(step_vec, val_costs, label='Validation cost')
+    # --- Cost plot ---
+    axs[0].plot(epochs, train_costs, label='Training cost')
+    axs[0].plot(epochs, val_costs, label='Validation cost')
     axs[0].set_xlabel('Update Step')
     axs[0].set_ylabel('Cost')
     axs[0].set_title('Training vs Validation Cost')
     axs[0].legend()
 
     # --- Loss plot ---
-    axs[1].plot(step_vec, train_losses, label='Training loss')
-    axs[1].plot(step_vec, val_losses, label='Validation loss')
+    axs[1].plot(epochs, train_losses, label='Training loss')
+    axs[1].plot(epochs, val_losses, label='Validation loss')
     axs[1].set_xlabel('Update Step')
     axs[1].set_ylabel('Loss')
     axs[1].set_title('Training vs Validation Loss')
@@ -534,9 +536,9 @@ def main():
     plt.savefig('cost_loss_subplot.png')
     plt.show()
 
-    steps = np.arange(len(etas))
+    # steps = np.arange(len(etas))
 
-    plt.figure()
+    """plt.figure()
     plt.plot(steps, etas, label = 'eta')
     plt.xlabel('Epoch')
     plt.ylabel('eta')
