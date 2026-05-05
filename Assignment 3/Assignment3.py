@@ -137,7 +137,7 @@ def compute_accuracy(P, y):
 
     return accuracy
 
-def backward_pass(Y, fp_data, MX, network, lam):
+def backward_pass(Y, fp_data, MX, network, lam, label_eps):
     Fs_flat = network['Fs_flat']
     W1 = network['W'][0]
     W2 = network['W'][1]
@@ -155,7 +155,12 @@ def backward_pass(Y, fp_data, MX, network, lam):
     grads['b'] = [None] * 2
     grads['b_conv'] = None
 
-    G = -(Y - P)
+    if label_eps> 0:
+        Y_smooth = label_smoothing(Y, label_eps)
+    else:
+        Y_smooth= Y
+
+    G = -(Y_smooth - P)
 
     # outpute layer
     grads['W'][1] = np.dot(G, x1.T) / n
@@ -367,6 +372,8 @@ def mini_batch_GD_increasing(MX, Y, y, MX_val, y_val, GD_params, init_net, lam, 
     curr_n_s = GD_params['n_s']
     n_cycles = GD_params['n_cycles']
 
+    label_eps = GD_params['label_eps']
+
     train_costs = []
     val_costs = []
     train_losses = []
@@ -396,7 +403,7 @@ def mini_batch_GD_increasing(MX, Y, y, MX_val, y_val, GD_params, init_net, lam, 
             etas.append(eta)
 
             fp_data = forward_pass(MXbatch, trained_net)
-            grads = backward_pass(Ybatch, fp_data, MXbatch, trained_net, lam)
+            grads = backward_pass(Ybatch, fp_data, MXbatch, trained_net, lam, label_eps)
 
 
             for i in range(len(trained_net['W'])):
@@ -435,7 +442,7 @@ def mini_batch_GD_increasing(MX, Y, y, MX_val, y_val, GD_params, init_net, lam, 
 
                 step_vec.append(t)
 
-                # print(f"step {t}, training cost: {train_cost:.6f}")
+                print(f"step {t}, training cost: {train_cost:.6f}")
 
             if cycle_t >= 2 * curr_n_s:
                 cycle_count += 1
@@ -450,6 +457,10 @@ def compute_accuracy(P, y):
     accuracy = np.mean(y_pred == y)
 
     return accuracy
+
+def label_smoothing(Y, epsilon):
+    K = Y.shape[0]
+    return (1 - epsilon) * Y + (epsilon / (K - 1)) * (1 - Y)
 
 def main_exercise1():
     debug_file = 'Assignment 3\debug_info.npz'
@@ -647,19 +658,19 @@ def main_exercise3_increasing():
     X_test = normalize(X_test, X_mean, X_std)
 
     architectures = [
-        {'f': 4,  'nf': 40,  'nh': 50},
-        {'f': 8,  'nf': 40,  'nh': 50},
+        {'f': 4,  'nf': 40,  'nh': 300},
     ]
 
     GD_params = {
-        'n_cycles': 3,
+        'n_cycles': 4,
         'n_s': 800,
         'eta_min': 1e-5,
         'eta_max': 1e-1,
-        'n_batch': 100
+        'n_batch': 100,
+        'label_eps': 0.1
     }
 
-    lam = 0.003
+    lam = 0.002
     K = 10
 
     curves = {}
