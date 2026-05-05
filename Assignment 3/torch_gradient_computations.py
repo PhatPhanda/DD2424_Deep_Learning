@@ -2,7 +2,7 @@ import torch
 import numpy as np
 
 
-def ComputeGradsWithTorch(MX, y, network_params):
+def ComputeGradsWithTorch(MX, y, network_params, lam):
     
     MXt = torch.tensor(MX)
 
@@ -16,6 +16,7 @@ def ComputeGradsWithTorch(MX, y, network_params):
         b[i] = torch.tensor(network_params['b'][i], requires_grad=True)    
 
     Fs_flat = torch.tensor(network_params['Fs_flat'], requires_grad=True)    
+    b_conv = torch.tensor(network_params['b_conv'], requires_grad=True)
 
     ## give informative names to these torch classes        
     apply_relu = torch.nn.ReLU()
@@ -30,7 +31,7 @@ def ComputeGradsWithTorch(MX, y, network_params):
     n = MX.shape[2]
     nf = network_params['Fs_flat'].shape[1]
 
-    conv_outputs = torch.einsum('ijn,jl->iln', MXt, Fs_flat)
+    conv_outputs = torch.einsum('ijn,jl->iln', MXt, Fs_flat) + b_conv.reshape(1, nf, 1)
 
     conv_flat = torch.reshape(conv_outputs, (n_p * nf, n))
     conv_flat = apply_relu(conv_flat)
@@ -48,9 +49,13 @@ def ComputeGradsWithTorch(MX, y, network_params):
     
     # compute the loss
     loss = torch.mean(-torch.log(P[y, np.arange(n)]))
+    reg = lam * (torch.sum(Fs_flat ** 2) + torch.sum(W[0] ** 2) + torch.sum(W[1] ** 2))
+
+    cost = loss + reg
+
     
     # compute the backward pass relative to the loss and the named parameters 
-    loss.backward()
+    cost.backward()
 
     # extract the computed gradients and make them numpy arrays 
     grads = {}
@@ -61,5 +66,6 @@ def ComputeGradsWithTorch(MX, y, network_params):
         grads['b'][i] = b[i].grad.numpy()
 
     grads['Fs_flat'] = Fs_flat.grad.numpy()
+    grads['b_conv'] = b_conv.grad.numpy()
 
     return grads
