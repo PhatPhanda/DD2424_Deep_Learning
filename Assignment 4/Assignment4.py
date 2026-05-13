@@ -1,5 +1,5 @@
 import numpy as np
-
+from torch_gradient_computations_column_wise import ComputeGradsWithTorch
 
 def read_file():
     book_fname = 'Assignment 4/goblet_book.txt'
@@ -7,7 +7,6 @@ def read_file():
     book_data = fid.read()
     fid.close()
     unique_chars = list(set(book_data))
-
     K = len(unique_chars)
     char_to_ind = {}
     ind_to_char = {}
@@ -16,7 +15,7 @@ def read_file():
         char_to_ind[unique_chars[i]] = i
         ind_to_char[i] = unique_chars[i]
 
-    return K, char_to_ind, ind_to_char
+    return book_data, K, char_to_ind, ind_to_char
 
 def init_parameters(K, m):
     rng = np.random.default_rng()
@@ -34,6 +33,18 @@ def init_parameters(K, m):
 
 
     return RNN, rng
+
+def chars_to_one_hot(chars, char_to_ind, K):
+    X = np.zeros((K, len(chars)))
+
+    for t, ch in enumerate(chars):
+        X[char_to_ind[ch], t] = 1
+
+    return X
+
+def chars_to_indices(chars, char_to_ind):
+    return np.array([char_to_ind[ch] for ch in chars])
+
 
 def synthesize_text(RNN, h0, x0, K, n, rng):
     h = h0
@@ -78,11 +89,11 @@ def forward_pass(RNN, X, Y, h0):
         a[:, t:t+1] = RNN["W"] @ h_prev + RNN["U"] @ x_t + RNN["b"]
         h[:, t:t+1] = np.tanh(a[:, t:t+1])
         o[:, t:t+1] = RNN["V"] @ h[:, t:t+1] + RNN["c"]
-        p[:, t:t+1] = np.exp(o) / np.sum(np.exp(o), axis=0, keepdims=True)
+        p[:, t:t+1] = np.exp(o[:, t:t+1]) / np.sum(np.exp(o[:, t:t+1]), axis=0, keepdims=True)
 
 
         loss += -(y_t.T @ np.log(p[:, t:t+1]))[0,0]
-        h_prev = h
+        h_prev = h[:, t:t+1]
 
     loss = loss / seq_length
 
@@ -112,9 +123,10 @@ def backward_pass(RNN, fp_data):
     h = fp_data['h']
     o = fp_data['o']
     p = fp_data['p']
+    h0 = fp_data['h0']
 
     seq_length = X.shape[1]
-    dh_next = np.zeros_like(h)
+    dh_next = np.zeros_like(h[:, 0:1])
 
 
     # init grads
@@ -134,47 +146,78 @@ def backward_pass(RNN, fp_data):
         h_t = h[:, t:t+1]
         a_t = a[:, t:t+1]
         
+        if t == 0:
+            h_prev = h0
 
-        g_t = -(y_t - p_t).T
+        else:
+            h_prev = h[:, t-1:t]
 
-        grads['V'] += g_t.T @ h_t.T
+        g_t = -(y_t - p_t)
+
+        grads['V'] += g_t @ h_t.T
         grads['c'] += g_t
 
-        dh = g_t @ V + dh_next
+        dh = V.T @ g_t + dh_next
 
-        da = dh @ np.diag(1 - np.tanh(a_t)**2)
+        da = dh * (1 - h_t**2)
 
-        grads['W'] += da.T @ h[:, t-1:t].T
-        grads['U'] += da.T @ x_t.T
+        grads['W'] += da @ h_prev.T
+        grads['U'] += da @ x_t.T
         grads['b'] += da
 
-        dh_next = da @ RNN['W']
+        dh_next = W.T @ da
+        
+
+    for key in grads:
+        grads[key] /= seq_length
+
+    return grads
+
+def compare_grads(my_grads, torch_grads):
+    for key in ['W', 'U', 'b', 'V', 'c']:
+        grad1 = my_grads[key]
+        grad2 = torch_grads[key]
+        print(f"\nComparing {key}:")
+        print("shape my_grads   :", grad1.shape)
+        print("shape torch_grads:", grad2.shape)
+        abs_diff = np.abs(grad1 - grad2)
+        max_abs_diff = np.max(abs_diff)
+
+        rel_error = np.max(abs_diff / np.maximum(1e-10, np.abs(grad1) + np.abs(grad2)))
+
+        print("max absolute difference:", max_abs_diff)
+        print("max relative error     :", rel_error)
 
 
+def main_test_grads():
+    book_data, K, char_to_ind, ind_to_char = read_file()
 
-
-def main():
-    K, char_to_ind, ind_to_char = read_file()
-    m = 100
-    eta = .001
+    m = 10
     seq_length = 25
 
-    RNN, rng = init_parameters(K,m)
+    RNN, rng = init_parameters(K, m)
 
     h0 = np.zeros((m, 1))
 
-    x0 = np.zeros((K, 1))
-    x0[char_to_ind["."], 0] = 1
+    X_chars = book_data[0:seq_length]
+    Y_chars = book_data[1:seq_length+1]
 
-    Y = synthesize_text(RNN, h0, x0, K, 200, rng)
+    X = chars_to_one_hot(X_chars, char_to_ind, K)
+    Y = chars_to_one_hot(Y_chars, char_to_ind, K)
 
-    generated_indices = np.argmax(Y, axis=0)
-    generated_text = ''.join(ind_to_char[i] for i in generated_indices)
+    y = chars_to_indices(Y_chars, char_to_ind)
 
-    print(generated_text)
+    loss, fp_data = forward_pass(RNN, X, Y, h0)
+
+    my_grads = backward_pass(RNN, fp_data)
+    torch_grads = ComputeGradsWithTorch(X, y, h0, RNN)
+
+    print("Loss:", loss)
+    compare_grads(my_grads, torch_grads)
 
 
 
-main()
+
+main_test_grads()
 
     
