@@ -1,5 +1,6 @@
 import numpy as np
 from torch_gradient_computations_column_wise import ComputeGradsWithTorch
+import matplotlib.pyplot as plt
 
 def read_file():
     book_fname = 'Assignment 4/goblet_book.txt'
@@ -18,7 +19,7 @@ def read_file():
     return book_data, K, char_to_ind, ind_to_char
 
 def init_parameters(K, m):
-    rng = np.random.default_rng()
+    rng = np.random.default_rng(42)
     # get the BitGenerator used by default_rng
     BitGen = type(rng.bit_generator)
     # use the state from a fresh bit generator
@@ -44,6 +45,11 @@ def chars_to_one_hot(chars, char_to_ind, K):
 
 def chars_to_indices(chars, char_to_ind):
     return np.array([char_to_ind[ch] for ch in chars])
+
+def one_hot_to_text(Y, ind_to_char):
+    idx = np.argmax(Y, axis=0)
+    chars = [ind_to_char[i] for i in idx]
+    return ''.join(chars)
 
 
 def synthesize_text(RNN, h0, x0, K, n, rng):
@@ -188,6 +194,95 @@ def compare_grads(my_grads, torch_grads):
         print("max absolute difference:", max_abs_diff)
         print("max relative error     :", rel_error)
 
+def init_adam(RNN):
+    m_adam = {}
+    v_adam = {}
+
+    for key in RNN:
+        m_adam[key] = np.zeros_like(RNN[key])
+        v_adam[key] = np.zeros_like(RNN[key])
+
+    return m_adam, v_adam
+
+
+def adam_update(RNN, grads, m_adam, v_adam, t, eta=0.001, beta1=0.9, beta2=0.999, eps=1e-8):
+    for key in RNN:
+        m_adam[key] = beta1 * m_adam[key] + (1 - beta1) * grads[key]
+        v_adam[key] = beta2 * v_adam[key] + (1 - beta2) * (grads[key] ** 2)
+
+        m_hat = m_adam[key] / (1 - beta1 ** t)
+        v_hat = v_adam[key] / (1 - beta2 ** t)
+
+        RNN[key] -= eta * m_hat / (np.sqrt(v_hat) + eps)
+
+    return RNN, m_adam, v_adam
+
+def train_rnn(num_updates, m, seq_length, eta, print_every, synth_every, synth_length):
+    book_data, K, char_to_ind, ind_to_char = read_file()
+
+    RNN, rng = init_parameters(K, m)
+
+    m_adam, v_adam = init_adam(RNN)
+
+    hprev = np.zeros((m, 1))
+    e = 0
+
+    smooth_loss = None
+    smooth_losses = []
+
+    best_loss = np.inf
+    best_RNN = None
+
+    for update_step in range(1, num_updates + 1):
+
+        if e + seq_length + 1 >= len(book_data):
+            e = 0
+            hprev = np.zeros((m, 1))
+
+        X_chars = book_data[e:e + seq_length]
+        Y_chars = book_data[e + 1:e + seq_length + 1]
+
+        X = chars_to_one_hot(X_chars, char_to_ind, K)
+        Y = chars_to_one_hot(Y_chars, char_to_ind, K)
+
+        loss, fp_data = forward_pass(RNN, X, Y, hprev)
+        grads = backward_pass(RNN, fp_data)
+
+        RNN, m_adam, v_adam = adam_update(
+            RNN, grads, m_adam, v_adam, update_step, eta=eta
+        )
+
+        hprev = fp_data["h"][:, -1:]
+
+        if smooth_loss is None:
+            smooth_loss = loss
+        else:
+            smooth_loss = 0.999 * smooth_loss + 0.001 * loss
+
+        smooth_losses.append(smooth_loss)
+
+        if smooth_loss < best_loss:
+            best_loss = smooth_loss
+            best_RNN = {key: RNN[key].copy() for key in RNN}
+
+        if update_step % print_every == 0:
+            print(f"iter = {update_step}, smooth_loss = {smooth_loss}")
+
+        if update_step == 1 or update_step % synth_every == 0:
+            print("\n--------------------------------")
+            print(f"Sample at iteration {update_step}")
+            print("--------------------------------")
+
+            x0 = X[:, 0:1]
+            Y_synth = synthesize_text(RNN, hprev, x0, K, synth_length, rng)
+            txt = one_hot_to_text(Y_synth, ind_to_char)
+
+            print(txt)
+            print("--------------------------------\n")
+
+        e += seq_length
+
+    return RNN, best_RNN, smooth_losses, char_to_ind, ind_to_char
 
 def main_test_grads():
     book_data, K, char_to_ind, ind_to_char = read_file()
@@ -215,9 +310,38 @@ def main_test_grads():
     print("Loss:", loss)
     compare_grads(my_grads, torch_grads)
 
+def main():
+    num_updates = 200000
+    m = 100
+    seq_length = 25
+    eta = 0.001
+    print_every = 50000
+    synth_every = 50000
+    synth_length= 200
+    RNN, best_RNN, smooth_losses, char_to_ind, ind_to_char = train_rnn(num_updates, m, seq_length, eta, print_every, synth_every, synth_length)
 
+    plt.figure(figsize=(10, 5))
+    plt.plot(smooth_losses)
+    plt.xlabel("Update step")
+    plt.ylabel("Smooth loss")
+    plt.title("Smooth loss during RNN training")
+    plt.grid(True)
+    plt.show()
 
+    book_data, K, char_to_ind, ind_to_char = read_file()
 
-main_test_grads()
+    h0 = np.zeros((best_RNN["W"].shape[0], 1))
 
-    
+    start_char = book_data[0]
+    x0 = np.zeros((K, 1))
+    x0[char_to_ind[start_char], 0] = 1
+
+    _, rng = init_parameters(K, best_RNN["W"].shape[0])
+
+    Y_synth = synthesize_text(best_RNN, h0, x0, K, 1000, rng)
+    generated_text = one_hot_to_text(Y_synth, ind_to_char)
+
+    print(generated_text)
+
+if __name__ == '__main__':
+    main()
